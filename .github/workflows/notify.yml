@@ -1,0 +1,35 @@
+name: Push-Nachrichten
+
+on:
+  schedule:
+    - cron: "0 5 * * *"   # ~06:00 MEZ / 07:00 MESZ – Tages-Briefing
+    - cron: "0 17 * * *"  # ~18:00 MEZ / 19:00 MESZ – Frostwarnung
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "morning oder evening"
+        default: morning
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Nachricht senden
+        env:
+          TZ: ${{ vars.TIMEZONE || 'Europe/Berlin' }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          ICS_URLS: ${{ secrets.ICS_URLS }}
+          LAT: ${{ vars.LAT }}
+          LON: ${{ vars.LON }}
+          CITY: ${{ vars.CITY }}
+          FROST_LIMIT: ${{ vars.FROST_LIMIT }}
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          if [ -z "$MODE" ]; then
+            if [ "${{ github.event.schedule }}" = "0 17 * * *" ]; then MODE=evening; else MODE=morning; fi
+          fi
+          node scripts/notify.mjs "$MODE"

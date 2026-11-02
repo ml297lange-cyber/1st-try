@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mein Tag</title>
+  <meta name="description" content="Tagesüberblick: Termine, Wetter, Frostwarnung, Aufgaben.">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Mein Tag">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p id="greeting" class="muted">Guten Tag</p>
+      <h1 id="today">–</h1>
+    </div>
+    <div class="top-actions">
+      <button id="refresh" class="icon-btn" aria-label="Aktualisieren">⟳</button>
+      <button id="open-settings" class="icon-btn" aria-label="Einstellungen">⚙︎</button>
+    </div>
+  </header>
+
+  <div id="alerts"></div>
+
+  <main class="grid">
+    <section class="card" id="weather-card">
+      <h2>Wetter</h2>
+      <div id="weather"><p class="muted">Lädt …</p></div>
+    </section>
+
+    <section class="card span-2" id="calendar-card">
+      <h2>Termine heute</h2>
+      <div id="events"><p class="muted">Lädt …</p></div>
+      <h3>Morgen</h3>
+      <div id="events-tomorrow"></div>
+    </section>
+
+    <section class="card" id="tasks-card">
+      <h2>Aufgaben</h2>
+      <form id="task-form" class="row">
+        <input id="task-input" placeholder="Neue Aufgabe …" autocomplete="off">
+        <button type="submit">+</button>
+      </form>
+      <ul id="tasks"></ul>
+    </section>
+
+    <section class="card" id="inbox-card">
+      <h2>Postfach &amp; Nachrichten</h2>
+      <div id="inbox"></div>
+      <div class="quick">
+        <a class="quick-btn" href="message://">✉️ Mail</a>
+        <a class="quick-btn" href="sms:">💬 Nachrichten</a>
+        <a class="quick-btn" href="whatsapp://">🟢 WhatsApp</a>
+        <a class="quick-btn" href="calshow://">📅 Kalender</a>
+      </div>
+    </section>
+
+    <section class="card" id="notes-card">
+      <h2>Notiz für heute</h2>
+      <textarea id="note" placeholder="Was ist heute wichtig?"></textarea>
+    </section>
+  </main>
+
+  <p id="install-hint" class="hint" hidden>
+    Tipp: Tippe in Safari auf <b>Teilen</b> → <b>Zum Home-Bildschirm</b>, um die App auf dem iPad zu installieren.
+  </p>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Einstellungen</h2>
+
+      <label>Ort (für Wetter)
+        <div class="row">
+          <input id="s-city" placeholder="z. B. München">
+          <button type="button" id="s-locate">📍</button>
+        </div>
+      </label>
+      <p class="muted small" id="s-coords"></p>
+
+      <label>Frostwarnung ab (°C, nachts)
+        <input id="s-frost" type="number" step="0.5" value="0">
+      </label>
+
+      <label>Kalender-Links (iCal/ICS, einer pro Zeile)
+        <textarea id="s-ics" rows="3" placeholder="webcal://p01-caldav.icloud.com/published/2/…"></textarea>
+      </label>
+      <p class="muted small">iCloud: Kalender-App → Kalender teilen → „Öffentlicher Kalender“ → Link kopieren.<br>
+        Google: Kalender-Einstellungen → „Privatadresse im iCal-Format“.</p>
+
+      <label>Proxy-Adresse (Cloudflare Worker, siehe Anleitung)
+        <input id="s-proxy" placeholder="https://mein-tag.DEINNAME.workers.dev">
+      </label>
+
+      <label>Zugangs-Code für den Worker
+        <input id="s-token" type="password" placeholder="APP_TOKEN aus der Anleitung">
+      </label>
+
+      <label>ntfy-Thema (für Push-Nachrichten)
+        <input id="s-ntfy" placeholder="z. B. mein-tag-x7k2q9">
+      </label>
+      <p class="muted small">Gleiches Thema in der ntfy-App abonnieren. Die tägliche Wetter-Push kommt über GitHub Actions (siehe README).</p>
+      <button type="button" id="s-test-push">Test-Push senden</button>
+
+      <div class="row end">
+        <button value="cancel" class="secondary">Abbrechen</button>
+        <button value="save" id="s-save">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="ics.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
