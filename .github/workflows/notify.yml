@@ -23,6 +23,8 @@ jobs:
           TZ: ${{ vars.TIMEZONE || 'Europe/Berlin' }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ICS_URLS: ${{ secrets.ICS_URLS }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           LAT: ${{ vars.LAT }}
           LON: ${{ vars.LON }}
           CITY: ${{ vars.CITY }}

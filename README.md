@@ -1,117 +1,92 @@
 # Mein Tag – dein Tagesüberblick fürs iPad
 
-Eine Web-App für den iPad-Home-Bildschirm. Sie zeigt dir jeden Tag:
+👉 **App öffnen:** https://ml297lange-cyber.github.io/1st-try/
 
-- 📅 **Termine** von heute und morgen (iCloud-, Google- oder Outlook-Kalender)
-- 🌤️ **Wetter** mit 3-Tage-Vorschau
+- 📅 **Termine** aus deinem iCloud-Kalender (über deine Apple-ID)
+- ✉️ **Ungelesene E-Mails** (iCloud-Mail)
+- 🌤️ **Wetter** mit Stundenvorschau und 4 Tagen
 - 🚗❄️ **Frostwarnung** („Auto abdecken!“), Glatteis, Sturm, Regen
-- ✉️ **E-Mails**: Anzahl ungelesener Mails und die neuesten Betreffzeilen
-- ✅ **Aufgaben** und eine **Notiz** für den Tag
-- 🔔 **Push-Nachrichten** aufs iPad/iPhone: morgens ein Tages-Briefing, abends eine Frostwarnung
+- 📖 **Vers des Tages**, mit Knopf zum Öffnen in der Bibel-App (YouVersion)
+- ✅ **Aufgaben** und 📝 **Notiz** für den Tag
+- ✨ **KI-Assistent**, der alles beantworten und steuern kann
+- 🔔 **Push-Nachrichten**: morgens Tagesüberblick, abends Frostwarnung, Erinnerungen vom Assistenten
 
-> **Wichtig zu Nachrichten (iMessage/WhatsApp):** Apple erlaubt keiner App und keiner Web-App, deine iMessages oder WhatsApp-Nachrichten auszulesen. Die App hat dafür Schnellzugriff-Buttons, die Nachrichten/WhatsApp direkt öffnen.
-
----
-
-## Schritt 1 – App online stellen (einmalig, ca. 2 Minuten)
-
-1. Auf GitHub dieses Repository öffnen → **Settings** → **Pages**.
-2. Bei **Source** „**GitHub Actions**“ auswählen.
-3. Unter **Actions** den Workflow „App veröffentlichen“ einmal starten (**Run workflow**), falls er nicht schon gelaufen ist.
-4. Danach ist die App erreichbar unter:
-   `https://ml297lange-cyber.github.io/1st-try/`
-
-> GitHub Pages ist kostenlos, wenn das Repository **öffentlich** ist. Deine Kalender-Links, Passwörter usw. landen **nicht** im Repository – sie bleiben nur auf deinem iPad bzw. als geheime Einstellungen bei GitHub/Cloudflare.
-
-## Schritt 2 – Auf den iPad-Home-Bildschirm
-
-1. Die Adresse oben in **Safari** auf dem iPad öffnen.
-2. Auf **Teilen** (Quadrat mit Pfeil) tippen → **Zum Home-Bildschirm** → **Hinzufügen**.
-3. Fertig – „Mein Tag“ startet jetzt wie eine normale App im Vollbild.
-
-## Schritt 3 – Ort und Wetter
-
-In der App auf ⚙︎ tippen, Stadt eintragen (oder 📍 für den aktuellen Standort) → **Speichern**.
-Bei „Frostwarnung ab“ kannst du die Grenze ändern (Standard: 0 °C).
-
-Das funktioniert sofort, ohne weitere Einrichtung.
-
-## Schritt 4 – Push-Nachrichten (Wetter & Tages-Briefing)
-
-Push-Nachrichten kommen über die kostenlose App **ntfy**.
-
-1. **ntfy** aus dem App Store installieren (iPad und/oder iPhone).
-2. In ntfy auf **+** tippen und ein Thema abonnieren, das nur du kennst, z. B. `mein-tag-x7k2q9` (der Name ist quasi dein Passwort – denk dir etwas Zufälliges aus).
-3. In GitHub → **Settings** → **Secrets and variables** → **Actions**:
-   - Reiter **Secrets** → **New repository secret**:
-     - `NTFY_TOPIC` = dein Thema (z. B. `mein-tag-x7k2q9`)
-     - optional `ICS_URLS` = deine Kalender-Links (einer pro Zeile), damit das Morgen-Briefing deine Termine enthält
-   - Reiter **Variables** → **New repository variable**:
-     - `LAT` = Breitengrad, z. B. `48.137`
-     - `LON` = Längengrad, z. B. `11.575`
-     - `CITY` = z. B. `München`
-     - optional `FROST_LIMIT` = z. B. `1` (Standard `0`)
-   - Die Koordinaten zeigt dir die App in den Einstellungen an, nachdem du deinen Ort gespeichert hast.
-4. Testen: **Actions** → „Push-Nachrichten“ → **Run workflow** (Modus `morning`).
-
-Ab dann bekommst du automatisch:
-- **ca. 6:00 Uhr**: Tages-Briefing (Wetter, Termine, Warnungen)
-- **ca. 18:00 Uhr**: „🚗❄️ Heute Nacht bis −2 °C – Auto abdecken!“ – **nur** wenn es nachts friert
-
-(GitHub-Zeitpläne laufen in UTC und können sich ein paar Minuten verspäten; im Sommer kommen die Nachrichten eine Stunde später.)
-
-In der App kannst du unter ⚙︎ dein ntfy-Thema eintragen und mit „Test-Push senden“ prüfen, ob alles ankommt.
-
-## Schritt 5 – Kalender und E-Mails verbinden
-
-Browser dürfen Kalender und Mails aus Sicherheitsgründen nicht direkt abrufen. Dafür gibt es einen kleinen, kostenlosen **Cloudflare Worker** (im Ordner `worker/`), der als Vermittler dient.
-
-### 5a – Worker einrichten (am Computer, einmalig)
-
-```bash
-npm install -g wrangler
-cd worker
-wrangler login                      # kostenloses Cloudflare-Konto
-wrangler secret put APP_TOKEN       # beliebiger langer Zufallscode, z. B. aus einem Passwort-Generator
-wrangler deploy                     # zeigt dir die Adresse, z. B. https://mein-tag.DEINNAME.workers.dev
-```
-
-### 5b – Kalender
-
-- **iCloud**: Kalender-App → beim Kalender auf ⓘ → **Öffentlicher Kalender** einschalten → **Link teilen** → kopieren.
-- **Google**: calendar.google.com → Einstellungen → dein Kalender → **Privatadresse im iCal-Format**.
-- **Outlook**: Einstellungen → Kalender → Freigegebene Kalender → **Kalender veröffentlichen** → ICS-Link.
-
-In der App unter ⚙︎ einfügen (einer pro Zeile), dazu die **Proxy-Adresse** (Worker-Adresse) und den **Zugangs-Code** (`APP_TOKEN`).
-
-### 5c – E-Mails (optional)
-
-Du brauchst ein **app-spezifisches Passwort** (nicht dein normales Passwort):
-- **iCloud**: appleid.apple.com → Anmeldung und Sicherheit → App-spezifische Passwörter
-- **Gmail**: myaccount.google.com → Sicherheit → App-Passwörter (2-Faktor muss an sein)
-
-```bash
-cd worker
-wrangler secret put IMAP_HOST   # iCloud: imap.mail.me.com   Gmail: imap.gmail.com   Outlook: outlook.office365.com
-wrangler secret put IMAP_USER   # deine E-Mail-Adresse
-wrangler secret put IMAP_PASS   # das app-spezifische Passwort
-wrangler deploy
-```
-
-Die App liest Mails nur (markiert nichts als gelesen) und zeigt Absender + Betreff der neuesten ungelesenen Mails.
+> iMessage und WhatsApp kann keine App auslesen – Apple erlaubt das nicht. Dafür gibt es Knöpfe, die die Apps direkt öffnen.
 
 ---
 
-## Was ist was?
+## 1. Auf den Home-Bildschirm
+
+1. Den Link oben in **Safari** auf dem iPad öffnen.
+2. **Teilen** (Quadrat mit Pfeil) → **Zum Home-Bildschirm** → **Hinzufügen**.
+
+## 2. Ort fürs Wetter
+
+Auf dem Startbildschirm auf **„Meinen Standort verwenden“** tippen – oder unter ⚙︎ eine Stadt suchen und aus der Liste antippen.
+
+Falls der Standort blockiert ist: iPad-**Einstellungen → Datenschutz & Sicherheit → Ortungsdienste** einschalten, dann **Safari-Websites → „Beim Verwenden der App“**.
+
+## 3. Kalender & Mail mit deiner Apple-ID verbinden
+
+Alles geht auf dem iPad, ohne Computer. GitHub holt deine Termine und Mails alle 30 Minuten ab und **verschlüsselt** sie. Nur deine App kennt den Schlüssel zum Entschlüsseln.
+
+**a) App-spezifisches Passwort erstellen** (dein normales Apple-Passwort wird **nicht** verwendet)
+1. https://account.apple.com öffnen und anmelden.
+2. **Anmelden & Sicherheit** → **App-spezifische Passwörter** → **+**.
+3. Namen eingeben, z. B. „Mein Tag“ → das angezeigte Passwort (`abcd-efgh-ijkl-mnop`) kopieren.
+
+**b) Bei GitHub eintragen**
+1. Im Repository: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+2. Diese drei Secrets anlegen:
+
+| Name | Wert |
+|---|---|
+| `APPLE_ID` | deine Apple-ID, z. B. `name@icloud.com` |
+| `APPLE_APP_PASSWORD` | das app-spezifische Passwort aus a) |
+| `DATA_KEY` | ein selbst ausgedachter, langer Schlüssel (mind. 20 Zeichen), z. B. `Sonne-Tannenbaum-Kaffee-2026!` |
+
+3. **Actions** → „App & Daten aktualisieren“ → **Run workflow** (oder bis zu 30 Min. warten).
+
+**c) In der App**
+⚙︎ → **Daten-Schlüssel** → denselben `DATA_KEY` eintragen. Fertig – Termine und Mails erscheinen.
+
+*Optional:* Weitere Kalender (z. B. Google) als Secret `ICS_URLS` (iCal-Links, einer pro Zeile). Andere Mail-Anbieter über die Secrets `IMAP_HOST`, `IMAP_USER`, `IMAP_PASS`.
+
+## 4. Push-Nachrichten
+
+1. App **ntfy** aus dem App Store installieren und ein Thema abonnieren, das nur du kennst (z. B. `mein-tag-x7k2q9`).
+2. In der App unter ⚙︎ dasselbe Thema eintragen → **Test**.
+   Ab jetzt kann dir auch der Assistent Erinnerungen schicken („Erinnere mich um 18 Uhr …“).
+3. Für die **automatischen** Nachrichten bei GitHub zusätzlich eintragen:
+   - Secret `NTFY_TOPIC` = dein Thema
+   - Unter **Variables**: `LAT` und `LON` (Koordinaten, stehen in der App unter ⚙︎ beim Ort), `CITY`, optional `FROST_LIMIT`
+
+Dann kommt **gegen 6 Uhr** dein Tagesüberblick und **gegen 18 Uhr** eine Frostwarnung, falls es nachts friert.
+
+## 5. KI-Assistent
+
+1. Auf https://console.anthropic.com ein Konto anlegen, etwas Guthaben aufladen und unter **API Keys** einen Schlüssel erstellen.
+2. In der App auf **✨ Assistent** tippen und den Schlüssel einfügen (bleibt nur auf deinem iPad).
+3. Unter ⚙︎ kannst du das Modell wählen: Opus 5.5 (am klügsten), Sonnet 5.5 oder Haiku 5.5 (am günstigsten).
+
+Der Assistent kennt deinen Tag und kann z. B.:
+- „Was steht heute an?“ / „Muss ich heute Nacht das Auto abdecken?“
+- „Setz Brot kaufen auf die Liste“ / „Hak den Zahnarzt ab“
+- „Erinnere mich um 17 Uhr an den Anruf“ (Push-Nachricht)
+- „Trag mir morgen 10 Uhr Friseur ein“ (Knopf zum Übernehmen in den Kalender)
+- „Erklär mir den Vers des Tages“ / „Stell auf dunkel um“ / „Wetter für Berlin“
+
+---
+
+## Technik
 
 | Datei | Zweck |
 |---|---|
-| `index.html`, `style.css`, `app.js` | Die App selbst |
-| `ics.js` | Liest Kalenderdaten (inkl. wiederkehrender Termine) |
-| `sw.js`, `manifest.webmanifest`, `icons/` | Damit die App auf dem Home-Bildschirm wie eine echte App läuft, auch offline |
-| `scripts/notify.mjs` | Erstellt die Push-Nachrichten |
-| `.github/workflows/notify.yml` | Zeitplan für die Push-Nachrichten |
-| `.github/workflows/pages.yml` | Veröffentlicht die App |
-| `worker/` | Vermittler für Kalender und E-Mails |
+| `index.html`, `style.css`, `app.js` | Die App |
+| `assistant.js`, `vendor/` | KI-Assistent (Anthropic SDK, lokal eingebunden) |
+| `verses.mjs` | Vers des Tages (Text: Lutherbibel 1912 über getBible) |
+| `scripts/sync.mjs` | Holt Kalender (iCloud CalDAV), Mail (IMAP) und Bibelvers, verschlüsselt (AES-GCM) |
+| `scripts/notify.mjs` | Push-Nachrichten |
+| `.github/workflows/` | Veröffentlichung + Abgleich alle 30 Min., Push-Zeitplan |
 
-Wetterdaten: [Open-Meteo](https://open-meteo.com) (kostenlos, kein Konto nötig).
+Wetter: [Open-Meteo](https://open-meteo.com). Hinweis: GitHub pausiert Zeitpläne, wenn 60 Tage lang nichts im Repository passiert – dann einmal unter **Actions** auf **Enable workflow** tippen.

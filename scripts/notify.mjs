@@ -1,11 +1,12 @@
 // Sends push messages via ntfy.sh. Run by GitHub Actions on a schedule.
 //   node scripts/notify.mjs morning   -> daily briefing (weather, appointments, frost tonight)
 //   node scripts/notify.mjs evening   -> only sends if it freezes tonight ("Auto abdecken!")
-// Environment: NTFY_TOPIC, LAT, LON, CITY, FROST_LIMIT (default 0), ICS_URLS (optional, one per line)
-import "../ics.js";
+// Environment: NTFY_TOPIC, LAT, LON, CITY, FROST_LIMIT (default 0),
+//   optional APPLE_ID + APPLE_APP_PASSWORD and/or ICS_URLS for appointments
+import { collectEvents } from "./lib/events.mjs";
 
 const mode = process.argv[2] || "morning";
-const { NTFY_TOPIC, LAT, LON, CITY = "", ICS_URLS = "" } = process.env;
+const { NTFY_TOPIC, LAT, LON, CITY = "" } = process.env;
 const FROST = Number(process.env.FROST_LIMIT ?? 0) || 0;
 const DRY = process.env.DRY_RUN === "1";
 
@@ -46,18 +47,14 @@ async function weather() {
 }
 
 async function todaysEvents() {
-  const urls = ICS_URLS.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-  if (!urls.length) return null;
-  const parsed = [];
-  for (const u of urls) {
-    try {
-      const res = await fetch(u.replace(/^webcal:/i, "https:"));
-      if (res.ok) parsed.push(globalThis.ICS.parse(await res.text()));
-    } catch (e) { console.error("calendar failed:", e.message); }
+  if (!(process.env.APPLE_ID && process.env.APPLE_APP_PASSWORD) && !process.env.ICS_URLS) return null;
+  try {
+    const { events } = await collectEvents(process.env, 1);
+    return events.map(e => ({ ...e, start: e.allDay ? e.start : new Date(e.start) }));
+  } catch (e) {
+    console.error("calendar failed:", e.message);
+    return null;
   }
-  const from = new Date(); from.setHours(0, 0, 0, 0);
-  const to = new Date(from); to.setDate(to.getDate() + 1);
-  return globalThis.ICS.eventsBetween(parsed, from, to);
 }
 
 const fmt = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });

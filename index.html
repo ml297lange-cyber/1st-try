@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Mein Tag</title>
-  <meta name="description" content="Tagesüberblick: Termine, Wetter, Frostwarnung, Aufgaben.">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Tagesüberblick: Termine, Wetter, Frostwarnung, Bibelvers, Aufgaben und KI-Assistent.">
+  <meta name="theme-color" content="#4f46e5">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,107 +15,166 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <header class="top">
-    <div>
-      <p id="greeting" class="muted">Guten Tag</p>
-      <h1 id="today">–</h1>
-    </div>
-    <div class="top-actions">
-      <button id="refresh" class="icon-btn" aria-label="Aktualisieren">⟳</button>
-      <button id="open-settings" class="icon-btn" aria-label="Einstellungen">⚙︎</button>
-    </div>
-  </header>
-
-  <div id="alerts"></div>
-
-  <main class="grid">
-    <section class="card" id="weather-card">
-      <h2>Wetter</h2>
-      <div id="weather"><p class="muted">Lädt …</p></div>
-    </section>
-
-    <section class="card span-2" id="calendar-card">
-      <h2>Termine heute</h2>
-      <div id="events"><p class="muted">Lädt …</p></div>
-      <h3>Morgen</h3>
-      <div id="events-tomorrow"></div>
-    </section>
-
-    <section class="card" id="tasks-card">
-      <h2>Aufgaben</h2>
-      <form id="task-form" class="row">
-        <input id="task-input" placeholder="Neue Aufgabe …" autocomplete="off">
-        <button type="submit">+</button>
-      </form>
-      <ul id="tasks"></ul>
-    </section>
-
-    <section class="card" id="inbox-card">
-      <h2>Postfach &amp; Nachrichten</h2>
-      <div id="inbox"></div>
-      <div class="quick">
-        <a class="quick-btn" href="message://">✉️ Mail</a>
-        <a class="quick-btn" href="sms:">💬 Nachrichten</a>
-        <a class="quick-btn" href="whatsapp://">🟢 WhatsApp</a>
-        <a class="quick-btn" href="calshow://">📅 Kalender</a>
+<body data-sky="day">
+  <div class="sky"></div>
+  <div class="wrap">
+    <header class="hero">
+      <div class="hero-actions">
+        <button id="refresh" class="glass-btn" aria-label="Aktualisieren">↻</button>
+        <button id="open-settings" class="glass-btn" aria-label="Einstellungen">⚙︎</button>
       </div>
-    </section>
+      <div>
+        <p class="greeting" id="greeting">Hallo</p>
+        <h1 class="date" id="today">–</h1>
+        <div class="clock" id="clock"></div>
+      </div>
+      <div class="hero-weather" id="hero-weather"></div>
+    </header>
 
-    <section class="card" id="notes-card">
-      <h2>Notiz für heute</h2>
-      <textarea id="note" placeholder="Was ist heute wichtig?"></textarea>
-    </section>
-  </main>
+    <div id="alerts"></div>
 
-  <p id="install-hint" class="hint" hidden>
-    Tipp: Tippe in Safari auf <b>Teilen</b> → <b>Zum Home-Bildschirm</b>, um die App auf dem iPad zu installieren.
-  </p>
-
-  <dialog id="settings">
-    <form method="dialog" id="settings-form">
-      <h2>Einstellungen</h2>
-
-      <label>Ort (für Wetter)
-        <div class="row">
-          <input id="s-city" placeholder="z. B. München">
-          <button type="button" id="s-locate">📍</button>
+    <main class="grid">
+      <section class="card span-2 row-2" id="calendar-card">
+        <div class="card-head">
+          <h2><span class="ic">📅</span>Termine heute</h2>
+          <span class="pill" id="event-count"></span>
         </div>
-      </label>
-      <p class="muted small" id="s-coords"></p>
+        <div id="events"></div>
+        <h3>Morgen</h3>
+        <div id="events-tomorrow"></div>
+        <div class="status" id="data-status"></div>
+      </section>
 
-      <label>Frostwarnung ab (°C, nachts)
-        <input id="s-frost" type="number" step="0.5" value="0">
-      </label>
+      <section class="card verse-card" id="verse-card">
+        <div class="card-head">
+          <h2><span class="ic">📖</span>Vers des Tages</h2>
+        </div>
+        <div id="verse"><p class="muted">Lädt …</p></div>
+      </section>
 
-      <label>Kalender-Links (iCal/ICS, einer pro Zeile)
-        <textarea id="s-ics" rows="3" placeholder="webcal://p01-caldav.icloud.com/published/2/…"></textarea>
-      </label>
-      <p class="muted small">iCloud: Kalender-App → Kalender teilen → „Öffentlicher Kalender“ → Link kopieren.<br>
-        Google: Kalender-Einstellungen → „Privatadresse im iCal-Format“.</p>
+      <section class="card" id="weather-card">
+        <div class="card-head">
+          <h2><span class="ic">🌤️</span>Wetter</h2>
+          <span class="pill" id="weather-place"></span>
+        </div>
+        <div id="weather"></div>
+      </section>
 
-      <label>Proxy-Adresse (Cloudflare Worker, siehe Anleitung)
-        <input id="s-proxy" placeholder="https://mein-tag.DEINNAME.workers.dev">
-      </label>
+      <section class="card" id="tasks-card">
+        <div class="card-head">
+          <h2><span class="ic">✅</span>Aufgaben</h2>
+          <span class="pill" id="task-count"></span>
+        </div>
+        <form id="task-form" class="task-form">
+          <input id="task-input" placeholder="Neue Aufgabe …" autocomplete="off" enterkeyhint="done">
+          <button type="submit" aria-label="Hinzufügen">+</button>
+        </form>
+        <ul id="tasks"></ul>
+      </section>
 
-      <label>Zugangs-Code für den Worker
-        <input id="s-token" type="password" placeholder="APP_TOKEN aus der Anleitung">
-      </label>
+      <section class="card" id="inbox-card">
+        <div class="card-head">
+          <h2><span class="ic">✉️</span>Postfach</h2>
+        </div>
+        <div id="inbox"></div>
+        <div class="quick">
+          <a href="message://"><span>✉️</span>Mail</a>
+          <a href="sms:"><span>💬</span>SMS</a>
+          <a href="whatsapp://"><span>🟢</span>WhatsApp</a>
+          <a href="calshow://"><span>📅</span>Kalender</a>
+        </div>
+      </section>
 
-      <label>ntfy-Thema (für Push-Nachrichten)
-        <input id="s-ntfy" placeholder="z. B. mein-tag-x7k2q9">
-      </label>
-      <p class="muted small">Gleiches Thema in der ntfy-App abonnieren. Die tägliche Wetter-Push kommt über GitHub Actions (siehe README).</p>
-      <button type="button" id="s-test-push">Test-Push senden</button>
+      <section class="card" id="notes-card">
+        <div class="card-head">
+          <h2><span class="ic">📝</span>Notiz für heute</h2>
+        </div>
+        <textarea id="note" placeholder="Was ist heute wichtig?"></textarea>
+      </section>
+    </main>
 
-      <div class="row end">
-        <button value="cancel" class="secondary">Abbrechen</button>
-        <button value="save" id="s-save">Speichern</button>
+    <p id="install-hint" class="install-hint" hidden>
+      Tipp: In Safari auf <b>Teilen</b> → <b>Zum Home-Bildschirm</b> tippen, dann startet „Mein Tag“ wie eine App.
+    </p>
+  </div>
+
+  <button class="fab" id="open-assistant"><span>✨</span>Assistent</button>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- Settings -->
+  <aside class="sheet" id="settings" aria-label="Einstellungen">
+    <div class="sheet-head">
+      <h2>Einstellungen</h2>
+      <button class="icon-btn" data-close aria-label="Schließen">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="setting">
+        <div class="label">📍 Ort für das Wetter</div>
+        <button id="s-locate" type="button" style="width:100%">Meinen aktuellen Standort verwenden</button>
+        <input id="s-city" placeholder="… oder Stadt suchen, z. B. Hamburg" autocomplete="off" enterkeyhint="search" style="margin-top:8px">
+        <ul class="results" id="s-results"></ul>
+        <div class="current-loc" id="s-current"></div>
       </div>
-    </form>
-  </dialog>
 
-  <script src="ics.js"></script>
-  <script src="app.js"></script>
+      <div class="setting">
+        <label for="s-frost">🚗 Frostwarnung ab (°C nachts)</label>
+        <input id="s-frost" type="number" step="0.5" inputmode="decimal">
+      </div>
+
+      <div class="setting">
+        <label for="s-key">🍎 Kalender & Mail (Apple-ID) – Daten-Schlüssel</label>
+        <input id="s-key" type="password" placeholder="Dein DATA_KEY" autocomplete="off">
+        <p class="hint">Der gleiche Schlüssel, den du bei GitHub als <b>DATA_KEY</b> hinterlegt hast. Anleitung: README, Schritt 3.</p>
+        <p class="hint" id="s-data-status"></p>
+      </div>
+
+      <div class="setting">
+        <label for="s-ntfy">🔔 Push-Nachrichten (ntfy-Thema)</label>
+        <div class="row">
+          <input id="s-ntfy" placeholder="z. B. mein-tag-x7k2q9" autocomplete="off">
+          <button id="s-test-push" type="button" class="secondary">Test</button>
+        </div>
+      </div>
+
+      <div class="setting">
+        <label for="s-ai-key">✨ KI-Assistent – API-Schlüssel</label>
+        <input id="s-ai-key" type="password" placeholder="sk-ant-…" autocomplete="off">
+        <p class="hint">Von console.anthropic.com → API Keys. Bleibt nur auf diesem Gerät gespeichert.</p>
+        <label for="s-ai-model" style="margin-top:12px; display:block; font-weight:650; font-size:.9rem; margin-bottom:8px">Modell</label>
+        <select id="s-ai-model">
+          <option value="claude-opus-5-5">Claude Opus 5.5 – am klügsten</option>
+          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 – schnell & günstiger</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 – am schnellsten & günstigsten</option>
+        </select>
+      </div>
+
+      <div class="setting">
+        <div class="label">🎨 Darstellung</div>
+        <div class="seg" id="s-theme">
+          <button type="button" data-v="auto">Automatisch</button>
+          <button type="button" data-v="light">Hell</button>
+          <button type="button" data-v="dark">Dunkel</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Assistant -->
+  <aside class="sheet" id="assistant" aria-label="Assistent">
+    <div class="sheet-head">
+      <h2>✨ Assistent</h2>
+      <button class="icon-btn" id="chat-new" aria-label="Neuer Chat" title="Neuer Chat">🗑</button>
+      <button class="icon-btn" data-close aria-label="Schließen">✕</button>
+    </div>
+    <div class="sheet-body"><div class="chat" id="chat"></div></div>
+    <form class="composer" id="composer">
+      <button type="button" class="icon-btn mic" id="mic" aria-label="Spracheingabe" hidden>🎤</button>
+      <input id="chat-input" placeholder="Frag mich etwas …" autocomplete="off" enterkeyhint="send">
+      <button type="submit" aria-label="Senden">➤</button>
+    </form>
+  </aside>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

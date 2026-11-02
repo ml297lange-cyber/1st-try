@@ -1,8 +1,11 @@
-name: App veröffentlichen (GitHub Pages)
+name: App & Daten aktualisieren
 
+# Publishes the app and, every 30 minutes, refreshes calendar/mail (encrypted) and the verse of the day.
 on:
   push:
     branches: [main, claude/daily-overview-agent-cmt1vi]
+  schedule:
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -22,10 +25,24 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Nur App-Dateien bereitstellen
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: App-Dateien bereitstellen
         run: |
           mkdir _site
-          cp -r index.html style.css app.js ics.js sw.js manifest.webmanifest icons _site/
+          cp -r index.html style.css app.js assistant.js verses.mjs sw.js manifest.webmanifest icons vendor _site/
+      - name: Kalender, Mail & Bibelvers abrufen
+        env:
+          TZ: ${{ vars.TIMEZONE || 'Europe/Berlin' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          DATA_KEY: ${{ secrets.DATA_KEY }}
+          ICS_URLS: ${{ secrets.ICS_URLS }}
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASS: ${{ secrets.IMAP_PASS }}
+        run: node scripts/sync.mjs _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
