@@ -35,6 +35,7 @@ jobs:
       - name: Kalender, Mail & Bibelvers abrufen
         env:
           TZ: ${{ vars.TIMEZONE || 'Europe/Berlin' }}
+          MEIN_TAG_CONFIG: ${{ secrets.MEIN_TAG_CONFIG }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           DATA_KEY: ${{ secrets.DATA_KEY }}

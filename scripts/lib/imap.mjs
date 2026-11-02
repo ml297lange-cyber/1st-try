@@ -29,7 +29,12 @@ export async function fetchUnread({ host, user, pass, limit = 8 }) {
     await readUntil(/\r\n/);
     await cmd(`LOGIN ${q(user)} ${q(pass)}`);
     await cmd("EXAMINE INBOX"); // read-only: nothing gets marked as read
-    const search = await cmd("SEARCH UNSEEN");
+    let search;
+    if (/gmail\.com$/i.test(host)) {
+      // Gmail: only count the "Primary" tab, not promotions/social
+      search = await cmd('SEARCH X-GM-RAW "category:primary is:unread"').catch(() => null);
+    }
+    if (!search) search = await cmd("SEARCH UNSEEN");
     const ids = (search.match(/\* SEARCH([^\r\n]*)/)?.[1] || "").trim().split(/\s+/).filter(Boolean);
     let messages = [];
     const latest = ids.slice(-limit);

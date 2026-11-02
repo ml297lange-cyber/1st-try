@@ -4,15 +4,19 @@
 // Environment: NTFY_TOPIC, LAT, LON, CITY, FROST_LIMIT (default 0),
 //   optional APPLE_ID + APPLE_APP_PASSWORD and/or ICS_URLS for appointments
 import { collectEvents } from "./lib/events.mjs";
+import { loadConfig } from "./lib/config.mjs";
+
+const cfg = loadConfig();
 
 const mode = process.argv[2] || "morning";
-const { NTFY_TOPIC, LAT, LON, CITY = "" } = process.env;
-const FROST = Number(process.env.FROST_LIMIT ?? 0) || 0;
+const { NTFY_TOPIC, LAT, LON } = cfg;
+const CITY = cfg.CITY || "";
+const FROST = Number(cfg.FROST_LIMIT ?? 0) || 0;
 const DRY = process.env.DRY_RUN === "1";
 
 if (!NTFY_TOPIC || !LAT || !LON) {
-  console.error("NTFY_TOPIC, LAT and LON must be set (repository variables/secrets).");
-  process.exit(1);
+  console.log("Push not set up yet (NTFY_TOPIC, LAT, LON missing) – nothing to do.");
+  process.exit(0);
 }
 
 async function send(title, body, { tags = "", priority = "default" } = {}) {
@@ -47,9 +51,9 @@ async function weather() {
 }
 
 async function todaysEvents() {
-  if (!(process.env.APPLE_ID && process.env.APPLE_APP_PASSWORD) && !process.env.ICS_URLS) return null;
+  if (!(cfg.APPLE_ID && cfg.APPLE_APP_PASSWORD) && !cfg.ICS_URLS) return null;
   try {
-    const { events } = await collectEvents(process.env, 1);
+    const { events } = await collectEvents(cfg, 1);
     return events.map(e => ({ ...e, start: e.allDay ? e.start : new Date(e.start) }));
   } catch (e) {
     console.error("calendar failed:", e.message);

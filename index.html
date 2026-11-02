@@ -78,14 +78,28 @@
         </div>
         <div id="inbox"></div>
         <div class="quick">
-          <a href="message://"><span>✉️</span>Mail</a>
+          <a href="googlegmail://" id="mail-app-link"><span>✉️</span>Mail</a>
           <a href="sms:"><span>💬</span>SMS</a>
-          <a href="whatsapp://"><span>🟢</span>WhatsApp</a>
           <a href="calshow://"><span>📅</span>Kalender</a>
+          <a href="#" data-open-connect><span>🔗</span>Verbinden</a>
         </div>
       </section>
 
-      <section class="card" id="notes-card">
+      <section class="card wa-card" id="whatsapp-card">
+        <div class="card-head">
+          <h2><span class="ic">🟢</span>WhatsApp</h2>
+          <button class="icon-btn" id="wa-edit" aria-label="Kontakte bearbeiten" title="Bearbeiten">✎</button>
+        </div>
+        <div class="wa-grid" id="wa-contacts"></div>
+        <form id="wa-form" class="wa-form" hidden>
+          <input id="wa-name" placeholder="Name, z. B. Mama" autocomplete="off">
+          <input id="wa-phone" placeholder="Handynummer, z. B. 0170 1234567" inputmode="tel" autocomplete="off">
+          <button type="submit">Kontakt speichern</button>
+        </form>
+        <a class="wa-open" href="whatsapp://">WhatsApp öffnen</a>
+      </section>
+
+      <section class="card span-full" id="notes-card">
         <div class="card-head">
           <h2><span class="ic">📝</span>Notiz für heute</h2>
         </div>
@@ -123,10 +137,13 @@
       </div>
 
       <div class="setting">
-        <label for="s-key">🍎 Kalender & Mail (Apple-ID) – Daten-Schlüssel</label>
-        <input id="s-key" type="password" placeholder="Dein DATA_KEY" autocomplete="off">
-        <p class="hint">Der gleiche Schlüssel, den du bei GitHub als <b>DATA_KEY</b> hinterlegt hast. Anleitung: README, Schritt 3.</p>
+        <div class="label">📬 E-Mail & Kalender</div>
+        <button type="button" data-open-connect style="width:100%">E-Mail & Kalender verbinden</button>
         <p class="hint" id="s-data-status"></p>
+        <details style="margin-top:8px">
+          <summary class="hint">Erweitert: Daten-Schlüssel</summary>
+          <input id="s-key" type="password" placeholder="DATA_KEY" autocomplete="off" style="margin-top:8px">
+        </details>
       </div>
 
       <div class="setting">
@@ -159,6 +176,72 @@
       </div>
     </div>
   </aside>
+
+  <!-- Connect wizard -->
+  <aside class="sheet" id="connect" aria-label="Verbinden">
+    <div class="sheet-head">
+      <h2>📬 E-Mail & Kalender verbinden</h2>
+      <button class="icon-btn" data-close aria-label="Schließen">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="step">
+        <div class="step-n">1</div>
+        <div class="step-body">
+          <b>E-Mail</b>
+          <select id="c-provider">
+            <option value="gmail">Gmail</option>
+            <option value="icloud">iCloud</option>
+            <option value="outlook">Outlook / Hotmail</option>
+            <option value="gmx">GMX</option>
+            <option value="webde">WEB.DE</option>
+            <option value="other">Anderer Anbieter</option>
+            <option value="none">Keine E-Mail</option>
+          </select>
+          <div id="c-mail-fields">
+            <p class="hint" id="c-howto"></p>
+            <a class="link-btn" id="c-howto-link" target="_blank" rel="noopener">App-Passwort erstellen ↗</a>
+            <input id="c-email" type="email" placeholder="deine.adresse@gmail.com" autocomplete="off" autocapitalize="off">
+            <input id="c-pass" type="password" placeholder="App-Passwort (16 Zeichen)" autocomplete="off">
+            <input id="c-host" placeholder="IMAP-Server, z. B. imap.example.com" autocomplete="off" autocapitalize="off" hidden>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">2</div>
+        <div class="step-body">
+          <b>Kalender</b> <span class="muted small">(optional)</span>
+          <p class="hint">Google Kalender: <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noopener">calendar.google.com ↗</a> → links deinen Kalender antippen → ganz unten <b>„Privatadresse im iCal-Format“</b> kopieren.</p>
+          <input id="c-ics" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" autocomplete="off" autocapitalize="off">
+          <label class="check-row"><input type="checkbox" id="c-apple-on"> Auch iCloud-Kalender (Apple-ID)</label>
+          <div id="c-apple" hidden>
+            <a class="link-btn" href="https://account.apple.com/account/manage" target="_blank" rel="noopener">Apple: App-Passwort erstellen ↗</a>
+            <input id="c-apple-id" type="email" placeholder="Apple-ID, z. B. name@icloud.com" autocomplete="off" autocapitalize="off">
+            <input id="c-apple-pass" type="password" placeholder="App-spezifisches Passwort" autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-n">3</div>
+        <div class="step-body">
+          <b>Bei GitHub speichern</b> <span class="muted small">(einmalig)</span>
+          <button type="button" id="c-copy" style="width:100%">① Einrichtungs-Code kopieren</button>
+          <a class="link-btn block" href="https://github.com/ml297lange-cyber/1st-try/settings/secrets/actions/new" target="_blank" rel="noopener">② GitHub öffnen ↗</a>
+          <p class="hint">Bei <b>Name</b> eintragen: <code>MEIN_TAG_CONFIG</code> <button type="button" class="mini" id="c-copy-name">kopieren</button><br>
+            Bei <b>Secret</b> den Code einfügen → <b>Add secret</b>.<br>
+            Gibt es den Namen schon: in der Liste auf den Stift ✎ tippen und den neuen Code einfügen.</p>
+          <a class="link-btn block" href="https://github.com/ml297lange-cyber/1st-try/actions/workflows/pages.yml" target="_blank" rel="noopener">③ Abgleich starten ↗</a>
+          <p class="hint">Dort auf <b>Run workflow</b> → <b>Run workflow</b> tippen. Nach ca. 1 Minute erscheinen Mails und Termine hier (danach automatisch alle 30 Minuten).</p>
+          <textarea id="c-code" readonly hidden></textarea>
+          <button type="button" class="secondary" id="c-check" style="width:100%">Prüfen, ob es geklappt hat</button>
+          <p class="hint" id="c-status"></p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" hidden></div>
 
   <!-- Assistant -->
   <aside class="sheet" id="assistant" aria-label="Assistent">

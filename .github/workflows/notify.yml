@@ -21,6 +21,7 @@ jobs:
       - name: Nachricht senden
         env:
           TZ: ${{ vars.TIMEZONE || 'Europe/Berlin' }}
+          MEIN_TAG_CONFIG: ${{ secrets.MEIN_TAG_CONFIG }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           ICS_URLS: ${{ secrets.ICS_URLS }}
           APPLE_ID: ${{ secrets.APPLE_ID }}

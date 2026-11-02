@@ -28,7 +28,8 @@ export async function collectEvents(env, days = 8) {
     try {
       const res = await fetch(url.replace(/^webcal:/i, "https:"));
       if (!res.ok) throw new Error("HTTP " + res.status);
-      sources.push({ name: `Kalender ${i + 1}`, color: COLORS[(i + 3) % COLORS.length], texts: [await res.text()] });
+      const name = /google\.com/.test(url) ? "Google Kalender" : `Kalender ${i + 1}`;
+      sources.push({ name, color: COLORS[(i + 3) % COLORS.length], texts: [await res.text()] });
     } catch (e) { errors.push(`Kalender-Link ${i + 1}: ${e.message}`); }
   }
 

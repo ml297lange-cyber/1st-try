@@ -8,10 +8,11 @@ import { collectEvents } from "./lib/events.mjs";
 import { fetchUnread } from "./lib/imap.mjs";
 import { encryptJson } from "./lib/crypto.mjs";
 import { verseForDate, fetchVerseText } from "../verses.mjs";
+import { loadConfig } from "./lib/config.mjs";
 
 const out = process.argv[2] || "_site";
 fs.mkdirSync(out, { recursive: true });
-const env = process.env;
+const env = loadConfig();
 
 // --- verse of the day (public, not encrypted) ---
 try {

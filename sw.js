@@ -1,7 +1,7 @@
 // Offline cache for the app shell. Data requests always go to the network.
-const CACHE = "mein-tag-v2";
+const CACHE = "mein-tag-v3";
 const SHELL = ["./", "index.html", "style.css", "app.js", "assistant.js", "verses.mjs",
-  "vendor/anthropic-sdk-0.135.0.mjs", "manifest.webmanifest",
+  "vendor/anthropic-sdk-0.135.0-safari14.mjs", "manifest.webmanifest",
   "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

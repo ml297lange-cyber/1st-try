@@ -1,5 +1,10 @@
 // Small personal assistant (Claude) that can read the day overview and control the app via tools.
-import Anthropic from "./vendor/anthropic-sdk-0.135.0.mjs";
+// The SDK is loaded on first use, so the chat panel always opens even if loading fails.
+let Anthropic = null;
+async function loadSdk() {
+  if (!Anthropic) Anthropic = (await import("./vendor/anthropic-sdk-0.135.0-safari14.mjs")).default;
+  return Anthropic;
+}
 
 const $ = (s) => document.querySelector(s);
 const store = {
@@ -17,10 +22,10 @@ const SYSTEM = `Du bist der persönliche Assistent in der iPad-App „Mein Tag�
 
 Du kennst den aktuellen Stand des Tages (Termine, Wetter, Frost, E-Mails, Aufgaben, Notiz, Bibelvers) aus dem Block <aktueller_stand>. Beantworte Fragen dazu direkt daraus.
 
-Du kannst die App mit Werkzeugen steuern: Aufgaben anlegen/abhaken/löschen, die Tagesnotiz schreiben, den Ort fürs Wetter ändern, die Frostgrenze ändern, die Darstellung (hell/dunkel) ändern, Daten aktualisieren, Push-Nachrichten senden (auch zeitversetzt als Erinnerung) und Knöpfe anzeigen, die andere Apps öffnen (Mail, Nachrichten, WhatsApp, Kalender, Bibel-App). Für neue Kalendertermine erstellst du mit create_calendar_event einen Knopf, über den der Nutzer den Termin in seinen Kalender übernimmt.
+Du kannst die App mit Werkzeugen steuern: Aufgaben anlegen/abhaken/löschen, die Tagesnotiz schreiben, den Ort fürs Wetter ändern, die Frostgrenze ändern, die Darstellung (hell/dunkel) ändern, Daten aktualisieren, Push-Nachrichten senden (auch zeitversetzt als Erinnerung) und Knöpfe anzeigen, die andere Apps öffnen (Mail, Nachrichten, WhatsApp, Kalender, Bibel-App). Für WhatsApp kannst du mit whatsapp_message eine Nachricht an einen gespeicherten Kontakt vorbereiten; der Nutzer tippt auf den Knopf, WhatsApp öffnet sich mit dem Text und er muss nur noch auf Senden tippen. Für neue Kalendertermine erstellst du mit create_calendar_event einen Knopf, über den der Nutzer den Termin in seinen Kalender übernimmt.
 
 Wenn der Nutzer etwas erledigt haben möchte, benutze die passenden Werkzeuge, statt nur zu beschreiben, was er tun könnte. Bestätige danach kurz, was du getan hast.
-Grenzen: iMessage- und WhatsApp-Nachrichten kannst du weder lesen noch senden (Apple erlaubt das nicht); biete stattdessen einen Knopf zum Öffnen der App an. E-Mails kannst du nur als Überblick (Absender/Betreff) sehen, nicht beantworten.`;
+Grenzen: iMessage- und WhatsApp-Nachrichten kannst du nicht lesen und nicht selbst abschicken (Apple/WhatsApp erlauben das nicht); du kannst WhatsApp-Nachrichten nur vorbereiten. E-Mails kannst du nur als Überblick (Absender/Betreff) sehen, nicht beantworten.`;
 
 const str = (description) => ({ type: "string", description });
 const TOOLS = [
@@ -35,6 +40,7 @@ const TOOLS = [
   { name: "refresh_data", description: "Lädt Wetter, Kalender und E-Mails neu.", input_schema: { type: "object", properties: {} } },
   { name: "send_push", description: "Sendet eine Push-Nachricht aufs Handy/iPad (ntfy). Mit 'at' wird sie zu einem späteren Zeitpunkt zugestellt (Erinnerung, max. 3 Tage im Voraus).", input_schema: { type: "object", properties: { title: str("Kurzer Titel"), message: str("Nachrichtentext"), at: str("Optional: Zustellzeit als lokale Zeit 'YYYY-MM-DDTHH:MM'") }, required: ["title", "message"] } },
   { name: "show_app_button", description: "Zeigt im Chat einen Knopf, der eine App oder Seite öffnet.", input_schema: { type: "object", properties: { target: { type: "string", enum: ["mail", "messages", "whatsapp", "calendar", "bible_verse", "youversion_votd", "settings"] }, label: str("Optionaler Knopftext") }, required: ["target"] } },
+  { name: "whatsapp_message", description: "Bereitet eine WhatsApp-Nachricht an einen gespeicherten WhatsApp-Kontakt vor (zeigt einen Knopf, der WhatsApp mit dem Text öffnet).", input_schema: { type: "object", properties: { contact: str("Name des Kontakts (wie gespeichert)"), text: str("Nachrichtentext") }, required: ["contact", "text"] } },
   { name: "create_calendar_event", description: "Erstellt einen Kalendertermin als Knopf; der Nutzer tippt darauf und übernimmt ihn in seinen iPad-Kalender.", input_schema: { type: "object", properties: { title: str("Titel"), start: str("Beginn, lokale Zeit 'YYYY-MM-DDTHH:MM' (ganztägig: 'YYYY-MM-DD')"), end: str("Ende, gleiches Format (optional)"), location: str("Ort (optional)") }, required: ["title", "start"] } },
 ];
 
@@ -83,6 +89,12 @@ async function runTool(name, input) {
       const [href, label] = LINKS[input.target];
       addLog({ type: "chips", chips: [{ href, label: input.label || label }] });
       return "Knopf angezeigt.";
+    }
+    case "whatsapp_message": {
+      const c = App.findContact(input.contact);
+      if (!c) return `Kein WhatsApp-Kontakt „${input.contact}“ gespeichert. Gespeichert sind: ${App.contacts().map(x => x.name).join(", ") || "keine"}.`;
+      addLog({ type: "chips", chips: [{ href: App.waLink(c, input.text), label: `🟢 An ${c.name} senden` }] });
+      return `Knopf für ${c.name} angezeigt. Der Nutzer muss in WhatsApp noch auf Senden tippen.`;
     }
     case "create_calendar_event": {
       addLog({ type: "chips", chips: [{ ics: icsFor(input), label: `📅 „${input.title}“ zum Kalender hinzufügen` }] });
@@ -146,6 +158,7 @@ function onChatClick(e) {
 
 // ---------- Agent loop ----------
 function errorText(e) {
+  if (!Anthropic) return "Der Assistent konnte nicht geladen werden (" + (e.message || e) + "). Bitte die App schließen und neu öffnen.";
   if (e instanceof Anthropic.AuthenticationError) return "Der API-Schlüssel ist ungültig. Bitte unter ⚙︎ prüfen.";
   if (e instanceof Anthropic.PermissionDeniedError) return "Der API-Schlüssel hat keinen Zugriff auf dieses Modell.";
   if (e instanceof Anthropic.RateLimitError) return "Gerade zu viele Anfragen – bitte kurz warten.";
@@ -164,21 +177,32 @@ async function send(text) {
   else history.push({ role: "user", content: [{ type: "text", text }] });
   busy = true; render();
 
-  const client = new Anthropic({ apiKey: App.settings.aiKey, dangerouslyAllowBrowser: true });
   const model = App.settings.aiModel || "claude-opus-5-5";
   try {
+    const SDK = await loadSdk();
+    const client = new SDK({ apiKey: App.settings.aiKey, dangerouslyAllowBrowser: true });
+    let useFallbacks = model !== "claude-haiku-5-5";
     for (let step = 0; step < 10; step++) {
       const params = {
         model, max_tokens: 16000, tools: TOOLS, messages: history,
         system: `${SYSTEM}\n\n<aktueller_stand>\n${App.context()}\n</aktueller_stand>`,
         output_config: { effort: "low" },
       };
-      if (model !== "claude-haiku-5-5") {
+      if (useFallbacks) {
         // If a request is declined by a safety classifier, let the API retry it on a suitable model.
         params.betas = ["server-side-fallback-2026-07-01"];
         params.fallbacks = "default";
       }
-      const res = await client.beta.messages.create(params);
+      let res;
+      try {
+        res = await client.beta.messages.create(params);
+      } catch (e) {
+        // Some accounts may not have the fallback beta yet: retry once without it.
+        if (useFallbacks && e instanceof SDK.BadRequestError && /fallback|beta/i.test(e.message)) {
+          useFallbacks = false; step--; continue;
+        }
+        throw e;
+      }
       if (res.stop_reason === "refusal") {
         if (history[history.length - 1]?.role === "user" && step === 0) history.pop();
         addLog({ type: "err", text: "Dazu kann ich leider nichts sagen." });

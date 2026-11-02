@@ -20,7 +20,6 @@ const fmtWd = new Intl.DateTimeFormat("de-DE", { weekday: "short" });
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const startOfDay = (d, add = 0) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + add); return x; };
 const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
-const README = "https://github.com/ml297lange-cyber/1st-try#readme";
 
 // ---------- Theme & header ----------
 function applyTheme() {
@@ -249,13 +248,10 @@ function renderCalendar() {
   const status = $("#data-status");
   if (!settings.dataKey) {
     $("#event-count").textContent = "";
-    $("#events").innerHTML = `<div class="empty"><span class="big">🍎</span><b>Kalender mit deiner Apple-ID verbinden</b></div>
-      <ol class="steps">
-        <li>App-spezifisches Passwort erstellen: <a href="https://account.apple.com" target="_blank">account.apple.com</a> → Anmelden & Sicherheit → App-spezifische Passwörter</li>
-        <li>Bei GitHub drei Secrets eintragen: <b>APPLE_ID</b>, <b>APPLE_APP_PASSWORD</b>, <b>DATA_KEY</b></li>
-        <li>Den DATA_KEY hier unter ⚙︎ eintragen – fertig.</li>
-      </ol>
-      <p class="small"><a href="${README}" target="_blank">Ausführliche Anleitung öffnen</a></p>`;
+    $("#events").innerHTML = `<div class="empty"><span class="big">📅</span><b>Kalender verbinden</b><br>
+      <span class="small">Google- oder iCloud-Kalender – in 3 kurzen Schritten.</span><br><br>
+      <button type="button" class="connect-btn">Kalender & E-Mail verbinden</button></div>`;
+    $("#events .connect-btn").onclick = openConnect;
     $("#events-tomorrow").innerHTML = "";
     status.textContent = "";
     return;
@@ -276,11 +272,11 @@ function renderCalendar() {
 function renderMail() {
   const box = $("#inbox");
   const mail = state.data?.mail;
+  $("#mail-app-link").href = settings.mailProvider === "gmail" ? "googlegmail://" : "message://";
   if (!mail) {
-    box.innerHTML = `<p class="muted small">${settings.dataKey && state.data
-      ? "E-Mails werden angezeigt, wenn deine Apple-ID eine @icloud.com-Adresse ist (oder IMAP eingerichtet ist)."
-      : "Ungelesene E-Mails erscheinen hier, sobald die Apple-ID verbunden ist."}<br>
-      iMessage und WhatsApp kann keine App auslesen – Apple erlaubt das nicht.</p>`;
+    box.innerHTML = `<div class="empty"><span class="big">📬</span>Sieh hier deine ungelesenen Mails.<br><br>
+      <button type="button" class="connect-btn">E-Mail verbinden</button></div>`;
+    box.querySelector(".connect-btn").onclick = openConnect;
     return;
   }
   box.innerHTML = `<div class="unread-big">${mail.unread}</div><div class="muted small" style="margin-bottom:6px">ungelesene E-Mail${mail.unread === 1 ? "" : "s"}</div>` +
@@ -388,7 +384,7 @@ function fillSettings() {
   $("#s-ntfy").value = settings.ntfy;
   $("#s-ai-key").value = settings.aiKey;
   $("#s-ai-model").value = settings.aiModel;
-  $("#s-data-status").textContent = settings.dataKey ? (state.data ? "✅ Verbunden – Daten werden entschlüsselt." : state.dataError) : "";
+  $("#s-data-status").textContent = settings.dataKey ? (state.data ? `✅ Verbunden${settings.mailUser ? " (" + settings.mailUser + ")" : ""}` : state.dataError) : "Noch nicht verbunden.";
   applyTheme();
 }
 $("#s-locate").onclick = useMyLocation;
@@ -429,6 +425,151 @@ $("#s-test-push").onclick = async () => {
   catch (e) { alert(e.message); }
 };
 
+// ---------- Toast & error display ----------
+let toastTimer;
+function toast(msg, ms = 3500) {
+  const t = $("#toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+}
+window.addEventListener("error", (e) => toast("Fehler: " + (e.message || "unbekannt"), 6000));
+window.addEventListener("unhandledrejection", (e) => toast("Fehler: " + (e.reason?.message || e.reason || "unbekannt"), 6000));
+
+// ---------- WhatsApp favourites ----------
+const WA_COLORS = ["#25d366", "#128c7e", "#34b7f1", "#f59e0b", "#ec4899", "#8b5cf6", "#ef4444", "#0ea5e9"];
+const getContacts = () => store.get("waContacts", []);
+const setContacts = (c) => { store.set("waContacts", c); renderContacts(); };
+function normalizePhone(p) {
+  let d = String(p).replace(/[^\d+]/g, "");
+  if (d.startsWith("+")) d = d.slice(1);
+  else if (d.startsWith("00")) d = d.slice(2);
+  else if (d.startsWith("0")) d = "49" + d.slice(1); // German number without country code
+  return d.replace(/\D/g, "");
+}
+const waLink = (c, text) => `https://wa.me/${c.phone}${text ? "?text=" + encodeURIComponent(text) : ""}`;
+function renderContacts() {
+  const list = getContacts();
+  $("#wa-contacts").innerHTML = list.map((c, i) => {
+    const initials = c.name.split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    return `<a class="wa-contact" href="${esc(waLink(c))}" target="_blank" rel="noopener">
+      <span class="wa-avatar" style="background:${WA_COLORS[i % WA_COLORS.length]}">${esc(initials)}</span>${esc(c.name)}
+      <button type="button" class="wa-del" data-del="${i}" aria-label="Entfernen">✕</button></a>`;
+  }).join("") + `<a class="wa-contact" href="#" id="wa-add"><span class="wa-avatar" style="background:var(--soft);color:var(--muted)">+</span>Hinzufügen</a>`;
+  $("#wa-add").onclick = (e) => { e.preventDefault(); $("#wa-form").hidden = false; $("#wa-name").focus(); };
+}
+$("#wa-contacts").addEventListener("click", (e) => {
+  const del = e.target.closest("[data-del]");
+  if (!del) return;
+  e.preventDefault();
+  const c = getContacts(); c.splice(+del.dataset.del, 1); setContacts(c);
+});
+$("#wa-edit").onclick = () => $("#whatsapp-card").classList.toggle("editing");
+$("#wa-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#wa-name").value.trim(), phone = normalizePhone($("#wa-phone").value);
+  if (!name || phone.length < 8) return toast("Bitte Name und Handynummer eingeben.");
+  setContacts([...getContacts(), { name, phone }]);
+  $("#wa-name").value = ""; $("#wa-phone").value = ""; $("#wa-form").hidden = true;
+});
+
+// ---------- Connect wizard (mail & calendar) ----------
+const PROVIDERS = {
+  gmail: { host: "imap.gmail.com", link: "https://myaccount.google.com/apppasswords", placeholder: "deine.adresse@gmail.com",
+    howto: "Google: Auf der Seite einen Namen eingeben (z. B. „Mein Tag“) → Erstellen → das 16-stellige Passwort kopieren und unten einfügen. (Falls die Seite das nicht anbietet: zuerst die „Bestätigung in zwei Schritten“ einschalten.)" },
+  icloud: { host: "imap.mail.me.com", link: "https://account.apple.com/account/manage", placeholder: "name@icloud.com",
+    howto: "Apple: Anmelden → „Anmelden und Sicherheit“ → „App-spezifische Passwörter“ → + → Namen eingeben → Passwort kopieren und unten einfügen." },
+  outlook: { host: "outlook.office365.com", link: "https://account.live.com/proofs/AppPassword", placeholder: "name@outlook.de",
+    howto: "Microsoft: „Neues App-Kennwort erstellen“ → Kennwort kopieren und unten einfügen. (Dafür muss die Zwei-Schritt-Überprüfung aktiv sein.)" },
+  gmx: { host: "imap.gmx.net", link: "https://www.gmx.net", placeholder: "name@gmx.de",
+    howto: "GMX: Im Postfach unter Einstellungen → „POP3/IMAP Abruf“ den Zugriff erlauben. Dann unten dein normales GMX-Passwort eingeben." },
+  webde: { host: "imap.web.de", link: "https://web.de", placeholder: "name@web.de",
+    howto: "WEB.DE: Im Postfach unter Einstellungen → „POP3/IMAP Abruf“ den Zugriff erlauben. Dann unten dein normales WEB.DE-Passwort eingeben." },
+  other: { host: "", link: "", placeholder: "deine@adresse.de", howto: "Trag den IMAP-Server deines Anbieters ein (steht in dessen Hilfe, oft „imap.anbieter.de“)." },
+};
+function updateProvider() {
+  const key = $("#c-provider").value, p = PROVIDERS[key];
+  $("#c-mail-fields").hidden = key === "none";
+  if (!p) return;
+  $("#c-howto").textContent = p.howto;
+  $("#c-howto-link").hidden = !p.link;
+  $("#c-howto-link").href = p.link || "#";
+  $("#c-email").placeholder = p.placeholder;
+  $("#c-host").hidden = key !== "other";
+  $("#c-pass").placeholder = key === "gmx" || key === "webde" ? "Passwort" : "App-Passwort";
+}
+function openConnect() {
+  $("#c-provider").value = settings.mailProvider || "gmail";
+  $("#c-email").value = settings.mailUser || "";
+  $("#c-status").textContent = "";
+  updateProvider();
+  openSheet("connect");
+}
+function randomKey() {
+  const b = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function buildSetupCode() {
+  const key = $("#c-provider").value;
+  const cfg = { v: 1 };
+  if (key !== "none") {
+    const user = $("#c-email").value.trim(), pass = $("#c-pass").value.trim();
+    const host = key === "other" ? $("#c-host").value.trim() : PROVIDERS[key].host;
+    if (!user || !pass) throw new Error("Bitte E-Mail-Adresse und Passwort bei Schritt 1 eintragen.");
+    if (!host) throw new Error("Bitte den IMAP-Server eintragen.");
+    cfg.mail = { host, user, pass: key === "gmail" ? pass.replace(/\s+/g, "") : pass };
+    settings.mailProvider = key; settings.mailUser = user;
+  }
+  const ics = $("#c-ics").value.trim();
+  if (ics) {
+    if (!/^(https?|webcal):\/\//i.test(ics)) throw new Error("Der Kalender-Link muss mit https:// beginnen.");
+    cfg.ics = [ics];
+  }
+  if ($("#c-apple-on").checked) {
+    let user = $("#c-apple-id").value.trim(), pass = $("#c-apple-pass").value.trim();
+    if (!user && key === "icloud") { user = cfg.mail.user; pass = cfg.mail.pass; }
+    if (!user || !pass) throw new Error("Bitte Apple-ID und App-Passwort für den iCloud-Kalender eintragen.");
+    cfg.apple = { user, pass };
+  }
+  if (!cfg.mail && !cfg.ics && !cfg.apple) throw new Error("Bitte mindestens E-Mail oder einen Kalender eintragen.");
+  // Also include what the automatic push messages need
+  if (settings.ntfy) cfg.ntfy = settings.ntfy;
+  if (settings.lat != null) Object.assign(cfg, { lat: settings.lat, lon: settings.lon, city: settings.city });
+  cfg.frost = Number(settings.frost) || 0;
+  if (!settings.dataKey) settings.dataKey = randomKey();
+  cfg.dataKey = settings.dataKey;
+  saveSettings();
+  return JSON.stringify(cfg);
+}
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); toast(okMsg); return true; }
+  catch { return false; }
+}
+$("#c-provider").addEventListener("change", updateProvider);
+$("#c-apple-on").addEventListener("change", () => { $("#c-apple").hidden = !$("#c-apple-on").checked; });
+$("#c-copy").onclick = async () => {
+  let code;
+  try { code = buildSetupCode(); } catch (e) { return toast(e.message, 5000); }
+  if (!(await copyText(code, "✓ Code kopiert – jetzt ② GitHub öffnen"))) {
+    const ta = $("#c-code"); ta.hidden = false; ta.value = code; ta.focus(); ta.select();
+    toast("Bitte den markierten Code kopieren (lange tippen → Kopieren).", 6000);
+  }
+  $("#c-status").textContent = "";
+};
+$("#c-copy-name").onclick = () => copyText("MEIN_TAG_CONFIG", "✓ Name kopiert");
+$("#c-check").onclick = async () => {
+  $("#c-status").textContent = "Prüfe …";
+  await loadData();
+  renderCalendar(); renderMail(); renderAlerts();
+  if (state.data) {
+    const errs = state.data.errors?.length ? " ⚠️ " + state.data.errors.join(" · ") : "";
+    const mail = state.data.mail ? `${state.data.mail.unread} ungelesene Mails` : "keine Mails";
+    $("#c-status").textContent = `✅ Verbunden: ${mail}, ${state.data.events.length} Termine in den nächsten Tagen.${errs}`;
+  } else {
+    $("#c-status").textContent = "⏳ Noch nicht da. Hast du ③ „Run workflow“ getippt? Das dauert ca. 1 Minute – dann nochmal prüfen.";
+  }
+};
+document.querySelectorAll("[data-open-connect]").forEach(b => b.addEventListener("click", (e) => { e.preventDefault(); openConnect(); }));
+
 // ---------- API for the assistant ----------
 export const App = {
   settings, saveSettings,
@@ -449,10 +590,14 @@ export const App = {
       `Notiz heute: ${getNote() || "(leer)"}`,
       state.verse ? `Vers des Tages: ${state.verse.ref}${state.verse.text ? " – " + state.verse.text : ""}` : "",
       `Push-Nachrichten: ${settings.ntfy ? "eingerichtet" : "nicht eingerichtet"}`,
+      `WhatsApp-Kontakte: ${getContacts().map(c => c.name).join(", ") || "keine gespeichert"}`,
     ];
     return lines.filter(Boolean).join("\n");
   },
   verse: () => state.verse,
+  contacts: getContacts,
+  findContact(name) { const n = name.toLowerCase(); const c = getContacts(); return c.find(x => x.name.toLowerCase() === n) || c.find(x => x.name.toLowerCase().includes(n) || n.includes(x.name.toLowerCase())); },
+  waLink,
   addTask(text) { setTasks([...getTasks(), { text, done: false }]); return `Aufgabe hinzugefügt: ${text}`; },
   findTask(q) { const t = getTasks(); const ql = q.toLowerCase(); const i = /^\d+$/.test(q) ? +q - 1 : t.findIndex(x => x.text.toLowerCase().includes(ql)); return i >= 0 && i < t.length ? i : -1; },
   completeTask(q, done = true) { const i = App.findTask(q); if (i < 0) return `Keine Aufgabe gefunden zu „${q}“.`; const t = getTasks(); t[i].done = done; setTasks(t); return `${done ? "Erledigt" : "Wieder offen"}: ${t[i].text}`; },
@@ -492,7 +637,7 @@ async function refresh(force) {
 }
 
 applyTheme();
-renderHeader(); renderTasks(); $("#note").value = getNote();
+renderHeader(); renderTasks(); renderContacts(); $("#note").value = getNote();
 refresh(true);
 setInterval(() => refresh(false), 60000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(false); });
