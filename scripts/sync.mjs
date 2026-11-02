@@ -16,7 +16,7 @@ const env = process.env;
 // --- verse of the day (public, not encrypted) ---
 try {
   const v = verseForDate();
-  v.text = await fetchVerseText(v);
+  v.text = await fetchVerseText(v, console.log);
   fs.writeFileSync(path.join(out, "verse.json"), JSON.stringify({ date: new Date().toDateString(), ...v }));
   console.log("Verse:", v.ref);
 } catch (e) {

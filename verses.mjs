@@ -49,12 +49,21 @@ export function verseForDate(date = new Date()) {
   };
 }
 
-// Fetches the verse text (Luther 1912, public domain) from the free getBible API.
-export async function fetchVerseText(v) {
-  const res = await fetch(`https://api.getbible.net/v2/luther1912/${v.book}/${v.chapter}.json`);
-  if (!res.ok) throw new Error("Bibeltext nicht verfügbar");
-  const json = await res.json();
-  const verses = (json.verses || []).filter(x => x.verse >= v.from && x.verse <= v.to);
-  if (!verses.length) throw new Error("Vers nicht gefunden");
-  return verses.map(x => x.text.trim()).join(" ");
+// Fetches the verse text (Luther 1912, public domain). Tries several free Bible APIs in turn.
+const SOURCES = [
+  (v) => [`https://api.getbible.net/v2/luther1912/${v.book}/${v.chapter}.json`, (j) => j.verses],
+  (v) => [`https://bolls.life/get-text/LUT/${v.book}/${v.chapter}/`, (j) => j],
+];
+export async function fetchVerseText(v, log = () => {}) {
+  for (const src of SOURCES) {
+    const [url, pick] = src(v);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) { log(`${url} -> HTTP ${res.status}`); continue; }
+      const verses = (pick(await res.json()) || []).filter(x => x.verse >= v.from && x.verse <= v.to);
+      if (!verses.length) { log(`${url} -> no verses`); continue; }
+      return verses.map(x => String(x.text).replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()).join(" ");
+    } catch (e) { log(`${url} -> ${e.message}`); }
+  }
+  throw new Error("Bibeltext nicht verfügbar");
 }
